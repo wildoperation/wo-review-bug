@@ -4,5 +4,10 @@
 	"keywords": [
 		"wordpress"
 	],
-	"license": "GPL-2.0-or-later"
+	"license": "GPL-2.0-or-later",
+	"autoload": {
+		"files": [
+			"./class-wp-plugin-review-bug.php"
+		]
+	}
 }
