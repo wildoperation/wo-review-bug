@@ -1,0 +1,8 @@
+{
+	"name": "wildoperation/wp-plugin-review-bug",
+	"description": "Adds a banner to the WordPress admin asking for a review for a plugin.",
+	"keywords": [
+		"wordpress"
+	],
+	"license": "GPL-2.0-or-later"
+}
