@@ -1,17 +1,18 @@
 <?php
 /**
+ * Version 0.1.1
+ *
  * Update Namespace to avoid plugin conflicts.
+ *
+ * @package WPPluginReviewBug
  */
+
 namespace WOWPRB;
 
 /**
  * Handle review banner for a WordPress plugin.
- *
- * Version 0.1.1
  */
 class WPPluginReviewBug {
-
-
 	/**
 	 * Plugin 'slug' (filename w/o path or extenstion)
 	 *
@@ -107,22 +108,20 @@ class WPPluginReviewBug {
 	 */
 	public function check_activation_date() {
 
-		if ( $this->should_set_nobug() ) {
-			return false;
-		}
+		if ( ! $this->should_set_nobug() ) {
+			if ( ! get_option( $this->get_option_name( 'nobug' ) ) ) {
+				$activation_timestamp = get_option( $this->get_option_name( 'activation' ) );
 
-		if ( ! get_option( $this->get_option_name( 'nobug' ) ) ) {
-			$activation_timestamp = get_option( $this->get_option_name( 'activation' ) );
+				if ( ! $activation_timestamp ) {
+					$this->set_activation_date();
+				} else {
 
-			if ( ! $activation_timestamp ) {
-				$this->set_activation_date();
-				return false;
-			}
+					$notice_date = strtotime( '+7 days', $activation_timestamp );
 
-			$notice_date = strtotime( '+7 days', $activation_timestamp );
-
-			if ( time() >= $notice_date ) {
-				add_action( 'admin_notices', array( $this, 'display_admin_notice' ) );
+					if ( time() >= $notice_date ) {
+						add_action( 'admin_notices', array( $this, 'display_admin_notice' ) );
+					}
+				}
 			}
 		}
 	}
