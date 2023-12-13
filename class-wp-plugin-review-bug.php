@@ -1,8 +1,13 @@
 <?php
 /**
+ * Update Namespace to avoid plugin conflicts.
+ */
+namespace WOWPRB;
+
+/**
  * Handle review banner for a WordPress plugin.
  *
- * Version 0.1.0
+ * Version 0.1.1
  */
 class WPPluginReviewBug {
 
