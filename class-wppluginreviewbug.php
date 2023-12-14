@@ -318,7 +318,6 @@ class WPPluginReviewBug {
 						security: '<?php echo esc_html_e( $ajax_nonce ); ?>',
 						action_performed: this_action,
 					};
-					console.log(data);
 
 					$.post( '<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>', data, function( response ) {
 						close_wowprcv_notice($actions.closest('.notice'));
@@ -336,7 +335,6 @@ class WPPluginReviewBug {
 				} );
 
 				$actions.closest('.notice').on('click', '.notice-dismiss', function(){
-					console.log('dismissed');
 					wowprcv_post_data($(this), 'worb-later');
 				});
 
