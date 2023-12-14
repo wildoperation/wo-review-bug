@@ -292,7 +292,11 @@ class WPPluginReviewBug {
 	}
 
 	private function action_string() {
-		return str_replace( '-', '_', $this->nonce_string() );
+		return str_replace(
+			'-',
+			'_',
+			$this->prefix . '_' . $this->slug
+		);
 	}
 
 	public function notice_script() {
