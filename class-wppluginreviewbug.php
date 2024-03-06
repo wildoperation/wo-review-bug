@@ -1,6 +1,5 @@
 <?php
 /**
- * Version 1.0.1
  *
  * Update Namespace to avoid plugin conflicts.
  *
@@ -28,20 +27,6 @@ class WPPluginReviewBug {
 	private $prefix;
 
 	/**
-	 * Store the plugin name from get_plugin_data
-	 *
-	 * @var string $plugin_name
-	 */
-	private $plugin_name;
-
-	/**
-	 * Store the text domain from get_plugin_data
-	 *
-	 * @var string $text_domain
-	 */
-	private $text_domain;
-
-	/**
 	 * Show the review notice to users with this capability.
 	 *
 	 * @var string $capability
@@ -63,6 +48,13 @@ class WPPluginReviewBug {
 	private $review_url;
 
 	/**
+	 * The class on the notice message.
+	 *
+	 * @var string
+	 */
+	private $notice_class;
+
+	/**
 	 * The messages displayed to the user.
 	 *
 	 * @var array $messages
@@ -70,99 +62,48 @@ class WPPluginReviewBug {
 	private $messages;
 
 	/**
-	 * Typical usage:
-	 * new WOReviewBug(__FILE__)
-	 * from main plugin file.
-	 *
 	 * Sets variables, creates hooks.
 	 *
 	 * @param string $plugin_file Pass the plugin file (__FILE__) to the class.
 	 * @param string $plugin_slug The plugin slug on the WordPress repository. If empty, one will be generated from the filename.
+	 * @param array  $messages An array of translated messages
 	 * @param array  $args An array of settings that overrides default arguments.
 	 */
-	public function __construct( $plugin_file, $plugin_slug = '', $messages = array(), $args = array() ) {
+	public function __construct( $plugin_file, $plugin_slug, $messages, $args = array() ) {
 
 		if ( is_admin() ) {
 
 			$default_args = array(
-				'plugin_name'       => '',
-				'plugin_textdomain' => '',
-				'capability'        => 'manage_options',
-				'prefix'            => 'worb',
-				'snooze_days'       => 7,
-				'review_url'        => '',
+				'capability'   => 'manage_options',
+				'prefix'       => 'worb',
+				'snooze_days'  => 7,
+				'review_url'   => '',
+				'notice_class' => 'notice-info',
 			);
 
 			$args = wp_parse_args( $args, $default_args );
 
 			/**
-			 * Get plugin information if not provided as params.
-			 */
-			if ( ! $plugin_slug ) {
-				$plugin_basename_parts = explode( '/', plugin_basename( $plugin_file ) );
-				$plugin_slug           = str_replace( '.php', '', strtolower( array_pop( $plugin_basename_parts ) ) );
-			}
-
-			if ( ! $args['plugin_name'] || ! $args['plugin_textdomain'] ) {
-				$plugin_data = $this->wo_get_plugin_data( $plugin_file );
-
-				if ( ! $args['plugin_name'] ) {
-					$args['plugin_name'] = $plugin_data['Name'];
-				}
-
-				if ( ! $args['plugin_textdomain'] ) {
-					$args['plugin_textdomain'] = ( isset( $plugin_data['TextDomain'] ) && $plugin_data['TextDomain'] !== '' ) ? $plugin_data['TextDomain'] : $plugin_slug;
-				}
-			}
-
-			/**
 			 * Setup variables
 			 */
-			$this->slug        = $plugin_slug;
-			$this->plugin_name = $args['plugin_name'];
-			$this->text_domain = $args['plugin_textdomain'];
-			$this->prefix      = ( $args['prefix'] !== '' ) ? sanitize_title( $args['prefix'] ) : $default_args['prefix'];
-			$this->capability  = ( $args['capability'] !== '' ) ? $args['capability'] : $default_args['capability'];
-			$this->snooze_days = ( intval( $args['snooze_days'] ) > 0 ) ? intval( $args['snooze_days'] ) : $default_args['snooze_days'];
-			$this->review_url  = ( $args['review_url'] != '' ) ? $args['review_url'] : $this->default_review_url();
-
-			/**
-			 * Setup messages
-			 */
-			$default_messages = array(
-				'intro'            => 'You&rsquo;ve been using ' . $this->plugin_name . ' for a while now. We&rsquo;d love your feedback!',
-				'rate_link_text'   => 'Rate the plugin',
-				'remind_link_text' => 'Remind me later',
-				'nobug_link_text'  => 'Don&rsquo;t ask again',
-				'notice_class'     => 'notice-info',
-			);
-
-			$this->messages = wp_parse_args( $messages, $default_messages );
+			$this->slug         = sanitize_title( $plugin_slug );
+			$this->prefix       = ( $args['prefix'] !== '' ) ? sanitize_title( $args['prefix'] ) : $default_args['prefix'];
+			$this->capability   = ( $args['capability'] !== '' ) ? $args['capability'] : $default_args['capability'];
+			$this->snooze_days  = ( intval( $args['snooze_days'] ) > 0 ) ? intval( $args['snooze_days'] ) : $default_args['snooze_days'];
+			$this->review_url   = ( $args['review_url'] != '' ) ? $args['review_url'] : $this->default_review_url();
+			$this->notice_class = $args['notice_class'];
+			$this->messages     = $messages;
 
 			/**
 			 * Plugin activation hook
 			 */
-			register_activation_hook( $plugin_file, array( &$this, 'set_check_timestamp' ) );
+			register_activation_hook( $plugin_file, array( $this, 'set_check_timestamp' ) );
 
 			/**
 			 * Hooks
 			 */
-			add_action( 'init', array( &$this, 'check' ), 20 );
+			add_action( 'init', array( $this, 'check' ), 20 );
 		}
-	}
-
-	/**
-	 * Get data from plugin. Require WP core file if needed.
-	 *
-	 * @param string $plugin_file The current plugin file.
-	 * @return array Plugin data.
-	 */
-	private function wo_get_plugin_data( $plugin_file ) {
-		if ( ! function_exists( 'get_plugin_data' ) ) {
-			require_once ABSPATH . 'wp-admin/includes/plugin.php';
-		}
-
-		return get_plugin_data( $plugin_file );
 	}
 
 	/**
@@ -213,10 +154,10 @@ class WPPluginReviewBug {
 					$notice_date = strtotime( '+' . $this->snooze_days . ' days', $check_timestamp );
 
 					if ( time() >= $notice_date ) {
-						add_action( 'admin_notices', array( &$this, 'display_admin_notice' ) );
-						add_action( 'wp_ajax_' . $this->action_string(), array( &$this, 'actions' ) );
-						add_action( 'admin_enqueue_scripts', array( &$this, 'enqueue' ) );
-						add_action( 'admin_print_footer_scripts', array( &$this, 'notice_script' ) );
+						add_action( 'admin_notices', array( $this, 'display_admin_notice' ) );
+						add_action( 'wp_ajax_' . $this->action_string(), array( $this, 'actions' ) );
+						add_action( 'admin_enqueue_scripts', array( $this, 'enqueue' ) );
+						add_action( 'admin_print_footer_scripts', array( $this, 'notice_script' ) );
 					}
 				}
 			}
@@ -247,17 +188,17 @@ class WPPluginReviewBug {
 	public function display_admin_notice() {
 		?>
 		<style type="text/css">
-			#<?php esc_attr_e( $this->prefix ); ?>-<?php esc_attr_e( $this->slug ); ?> .actions a { margin-left: 10px; }
-			#<?php esc_attr_e( $this->prefix ); ?>-<?php esc_attr_e( $this->slug ); ?> .actions a:first-child { margin-left: 0; }
+			#<?php echo esc_attr( $this->prefix ); ?>-<?php echo esc_attr( $this->slug ); ?> .actions a { margin-left: 10px; }
+			#<?php echo esc_attr( $this->prefix ); ?>-<?php echo esc_attr( $this->slug ); ?> .actions a:first-child { margin-left: 0; }
 		</style>
-		<div class="notice <?php esc_attr_e( $this->messages['notice_class'] ); ?> is-dismissible" id="<?php esc_attr_e( $this->prefix ); ?>-<?php esc_attr_e( $this->slug ); ?>">
-			<p><?php esc_html_e( $this->messages['intro'], $this->text_domain ); ?></p>
+		<div class="notice <?php echo esc_attr( $this->notice_class ); ?> is-dismissible" id="<?php echo esc_attr( $this->prefix ); ?>-<?php echo esc_attr( $this->slug ); ?>">
+			<p><?php echo esc_html( $this->messages['intro'] ); ?></p>
 			<p class="actions">
-				<a id="<?php esc_attr_e( $this->prefix ); ?>-rate-<?php esc_attr_e( $this->slug ); ?>" href="<?php echo esc_url( $this->review_url ); ?>" target="_blank" class="<?php esc_attr_e( $this->prefix ); ?>-rate <?php esc_attr_e( $this->prefix ); ?>-action button button-primary">
-					<?php esc_html_e( $this->messages['rate_link_text'], $this->text_domain ); ?>
+				<a id="<?php echo esc_attr( $this->prefix ); ?>-rate-<?php echo esc_attr( $this->slug ); ?>" href="<?php echo esc_url( $this->review_url ); ?>" target="_blank" class="<?php echo esc_attr( $this->prefix ); ?>-rate <?php echo esc_attr( $this->prefix ); ?>-action button button-primary">
+					<?php echo esc_html( $this->messages['rate_link_text'] ); ?>
 				</a>
-				<a id="<?php esc_attr_e( $this->prefix ); ?>-later-<?php esc_attr_e( $this->slug ); ?>" href="#" class="<?php esc_attr_e( $this->prefix ); ?>-action <?php esc_attr_e( $this->prefix ); ?>-later"><?php esc_html_e( $this->messages['remind_link_text'], $this->text_domain ); ?></a>
-				<a id="<?php esc_attr_e( $this->prefix ); ?>-nobug-<?php esc_attr_e( $this->slug ); ?>" href="#" class="<?php esc_attr_e( $this->prefix ); ?>-action <?php esc_attr_e( $this->prefix ); ?>-nobug"><?php esc_html_e( $this->messages['nobug_link_text'], $this->text_domain ); ?></a>
+				<a id="<?php echo esc_attr( $this->prefix ); ?>-later-<?php echo esc_attr( $this->slug ); ?>" href="#" class="<?php echo esc_attr( $this->prefix ); ?>-action <?php echo esc_attr( $this->prefix ); ?>-later"><?php echo esc_html( $this->messages['remind_link_text'] ); ?></a>
+				<a id="<?php echo esc_attr( $this->prefix ); ?>-nobug-<?php echo esc_attr( $this->slug ); ?>" href="#" class="<?php echo esc_attr( $this->prefix ); ?>-action <?php echo esc_attr( $this->prefix ); ?>-nobug"><?php echo esc_html( $this->messages['nobug_link_text'] ); ?></a>
 			</p>
 		</div>
 		<?php
@@ -305,10 +246,10 @@ class WPPluginReviewBug {
 
 		?>
 
-		<script type="text/javascript" id="<?php esc_attr_e( $this->prefix ); ?>-<?php esc_attr_e( $this->slug ); ?>-script">
+		<script type="text/javascript" id="<?php echo esc_attr( $this->prefix ); ?>-<?php echo esc_attr( $this->slug ); ?>-script">
 			jQuery( document ).ready( function( $ ){
 
-				var $actions = $('#<?php esc_html_e( $this->prefix ); ?>-<?php esc_html_e( $this->slug ); ?> .<?php esc_html_e( $this->prefix ); ?>-action');
+				var $actions = $('#<?php echo esc_html( $this->prefix ); ?>-<?php echo esc_html( $this->slug ); ?> .<?php echo esc_html( $this->prefix ); ?>-action');
 
 				function close_wowprcv_notice($notice) {
 					$notice.slideUp('fast', function() {
@@ -318,8 +259,8 @@ class WPPluginReviewBug {
 
 				function wowprcv_post_data($elem, this_action) {
 					var data = {
-						action: '<?php esc_html_e( $this->action_string() ); ?>',
-						security: '<?php echo esc_html_e( $ajax_nonce ); ?>',
+						action: '<?php echo esc_html( $this->action_string() ); ?>',
+						security: '<?php echo esc_html( $ajax_nonce ); ?>',
 						action_performed: this_action,
 					};
 
@@ -330,9 +271,9 @@ class WPPluginReviewBug {
 
 				$actions.click( function( e ){
 					var $this = $(this);
-					var action_performed = $this.hasClass('<?php esc_html_e( $this->prefix ); ?>-nobug') ? 'worb-nobug' : 'worb-later';
+					var action_performed = $this.hasClass('<?php echo esc_html( $this->prefix ); ?>-nobug') ? 'worb-nobug' : 'worb-later';
 
-					if (!$this.hasClass('<?php esc_html_e( $this->prefix ); ?>-rate')) {
+					if (!$this.hasClass('<?php echo esc_html( $this->prefix ); ?>-rate')) {
 						e.preventDefault();
 						wowprcv_post_data($this, action_performed);
 					}
