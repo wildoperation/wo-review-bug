@@ -1,6 +1,5 @@
 <?php
 /**
- * Version 1.1.0
  *
  * Update Namespace to avoid plugin conflicts.
  *
@@ -99,12 +98,23 @@ class WPPluginReviewBug {
 			 * Plugin activation hook
 			 */
 			register_activation_hook( $plugin_file, array( $this, 'set_check_timestamp' ) );
+			register_deactivation_hook( $plugin_file, array( $this, 'deactivation_cleanup' ) );
 
 			/**
 			 * Hooks
 			 */
 			add_action( 'init', array( $this, 'check' ), 20 );
 		}
+	}
+
+	/**
+	 * Delete any stored data on deactivation.
+	 *
+	 * @return void
+	 */
+	public function deactivation_cleanup() {
+		delete_option( $this->get_option_name( 'check' ) );
+		delete_option( $this->get_option_name( 'nobug' ) );
 	}
 
 	/**
@@ -216,9 +226,11 @@ class WPPluginReviewBug {
 			wp_die();
 		}
 
-		if ( 'worb-later' == $_POST['action_performed'] ) {
+		$action_performed = strtolower( sanitize_text_field( wp_unslash( $_POST['action_performed'] ) ) );
+
+		if ( 'worb-later' === $action_performed ) {
 			$this->set_check_timestamp( true );
-		} elseif ( 'worb-nobug' == $_POST['action_performed'] ) {
+		} elseif ( 'worb-nobug' === $action_performed ) {
 			$this->set_nobug_option();
 		}
 
