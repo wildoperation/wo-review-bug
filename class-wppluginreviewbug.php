@@ -1,5 +1,6 @@
 <?php
 /**
+ * Version 1.1.1
  *
  * Update Namespace to avoid plugin conflicts.
  *
