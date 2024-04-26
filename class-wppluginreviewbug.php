@@ -1,6 +1,6 @@
 <?php
 /**
- * Version 1.1.1
+ * Version 1.1.2
  *
  * Update Namespace to avoid plugin conflicts.
  *
@@ -49,6 +49,13 @@ class WPPluginReviewBug {
 	private $review_url;
 
 	/**
+	 * The URL to a help page.
+	 *
+	 * @var string $need_help_url
+	 */
+	private $need_help_url;
+
+	/**
 	 * The class on the notice message.
 	 *
 	 * @var string
@@ -67,7 +74,7 @@ class WPPluginReviewBug {
 	 *
 	 * @param string $plugin_file Pass the plugin file (__FILE__) to the class.
 	 * @param string $plugin_slug The plugin slug on the WordPress repository. If empty, one will be generated from the filename.
-	 * @param array  $messages An array of translated messages
+	 * @param array  $messages An array of translated messages.
 	 * @param array  $args An array of settings that overrides default arguments.
 	 */
 	public function __construct( $plugin_file, $plugin_slug, $messages, $args = array() ) {
@@ -75,11 +82,12 @@ class WPPluginReviewBug {
 		if ( is_admin() ) {
 
 			$default_args = array(
-				'capability'   => 'manage_options',
-				'prefix'       => 'worb',
-				'snooze_days'  => 7,
-				'review_url'   => '',
-				'notice_class' => 'notice-info',
+				'capability'    => 'manage_options',
+				'prefix'        => 'worb',
+				'snooze_days'   => 7,
+				'review_url'    => '',
+				'notice_class'  => 'notice-info',
+				'need_help_url' => '',
 			);
 
 			$args = wp_parse_args( $args, $default_args );
@@ -87,13 +95,14 @@ class WPPluginReviewBug {
 			/**
 			 * Setup variables
 			 */
-			$this->slug         = sanitize_title( $plugin_slug );
-			$this->prefix       = ( $args['prefix'] !== '' ) ? sanitize_title( $args['prefix'] ) : $default_args['prefix'];
-			$this->capability   = ( $args['capability'] !== '' ) ? $args['capability'] : $default_args['capability'];
-			$this->snooze_days  = ( intval( $args['snooze_days'] ) > 0 ) ? intval( $args['snooze_days'] ) : $default_args['snooze_days'];
-			$this->review_url   = ( $args['review_url'] != '' ) ? $args['review_url'] : $this->default_review_url();
-			$this->notice_class = $args['notice_class'];
-			$this->messages     = $messages;
+			$this->slug          = sanitize_title( $plugin_slug );
+			$this->prefix        = ( $args['prefix'] !== '' ) ? sanitize_title( $args['prefix'] ) : $default_args['prefix'];
+			$this->capability    = ( $args['capability'] !== '' ) ? $args['capability'] : $default_args['capability'];
+			$this->snooze_days   = ( intval( $args['snooze_days'] ) > 0 ) ? intval( $args['snooze_days'] ) : $default_args['snooze_days'];
+			$this->review_url    = ( $args['review_url'] != '' ) ? $args['review_url'] : $this->default_review_url();
+			$this->need_help_url = $args['need_help_url'];
+			$this->notice_class  = $args['notice_class'];
+			$this->messages      = $messages;
 
 			/**
 			 * Plugin activation hook
@@ -195,9 +204,27 @@ class WPPluginReviewBug {
 	}
 
 	/**
+	 * Get the current URL.
+	 *
+	 * @return string
+	 */
+	public static function current_url() {
+		$url         = ( isset( $_SERVER['HTTPS'] ) && sanitize_text_field( wp_unslash( $_SERVER['HTTPS'] ) ) == 'on' ? 'https' : 'http' ) . '://';
+		$host        = ( isset( $_SERVER['HTTP_HOST'] ) ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ) ) : '';
+		$request_uri = ( isset( $_SERVER['REQUEST_URI'] ) ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
+
+		return sanitize_url( $url . $host . $request_uri );
+	}
+
+	/**
 	 * Displays the admin review banner.
 	 */
 	public function display_admin_notice() {
+		$showhelp = isset( $this->need_help_url ) && $this->need_help_url ? true : false;
+
+		if ( $showhelp && ( strtolower( $this->need_help_url ) === strtolower( $this->current_url() ) ) ) {
+			$showhelp = false;
+		}
 		?>
 		<style type="text/css">
 			#<?php echo esc_attr( $this->prefix ); ?>-<?php echo esc_attr( $this->slug ); ?> .actions a { margin-left: 10px; }
@@ -209,6 +236,11 @@ class WPPluginReviewBug {
 				<a id="<?php echo esc_attr( $this->prefix ); ?>-rate-<?php echo esc_attr( $this->slug ); ?>" href="<?php echo esc_url( $this->review_url ); ?>" target="_blank" class="<?php echo esc_attr( $this->prefix ); ?>-rate <?php echo esc_attr( $this->prefix ); ?>-action button button-primary">
 					<?php echo esc_html( $this->messages['rate_link_text'] ); ?>
 				</a>
+				<?php if ( $showhelp ) : ?>
+				<a id="<?php echo esc_attr( $this->prefix ); ?>-help-<?php echo esc_attr( $this->slug ); ?>" href="<?php echo esc_url( $this->need_help_url ); ?>" class="<?php echo esc_attr( $this->prefix ); ?>-help button button-secondary">
+					<?php echo esc_html( $this->messages['need_help_text'] ); ?>
+				</a>
+				<?php endif; ?>
 				<a id="<?php echo esc_attr( $this->prefix ); ?>-later-<?php echo esc_attr( $this->slug ); ?>" href="#" class="<?php echo esc_attr( $this->prefix ); ?>-action <?php echo esc_attr( $this->prefix ); ?>-later"><?php echo esc_html( $this->messages['remind_link_text'] ); ?></a>
 				<a id="<?php echo esc_attr( $this->prefix ); ?>-nobug-<?php echo esc_attr( $this->slug ); ?>" href="#" class="<?php echo esc_attr( $this->prefix ); ?>-action <?php echo esc_attr( $this->prefix ); ?>-nobug"><?php echo esc_html( $this->messages['nobug_link_text'] ); ?></a>
 			</p>
