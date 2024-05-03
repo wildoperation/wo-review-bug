@@ -1,6 +1,6 @@
 <?php
 /**
- * Version 1.1.2
+ * Version 1.1.3
  *
  * Update Namespace to avoid plugin conflicts.
  *
@@ -255,7 +255,7 @@ class WPPluginReviewBug {
 
 		check_ajax_referer( $this->nonce_string(), 'security' );
 
-		if ( ! isset( $_POST['action_performed'] ) ) {
+		if ( ! current_user_can( $this->capability ) || ! isset( $_POST['action_performed'] ) ) {
 			wp_die();
 		}
 
